@@ -122,6 +122,26 @@
             </svg>
         );
 
+        const Edit2 = ({ size = 24 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                <path d="m15 5 4 4"/>
+            </svg>
+        );
+
+        const Check = ({ size = 24 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        );
+
+        const X = ({ size = 24 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18"/>
+                <path d="m6 6 12 12"/>
+            </svg>
+        );
+
         const Play = ({ size = 24, fill = "none", className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 <polygon points="5 3 19 12 5 21 5 3"/>
@@ -139,15 +159,29 @@
             </svg>
         );
 
+        const List = ({ size = 24 }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" x2="21" y1="6" y2="6"/>
+                <line x1="8" x2="21" y1="12" y2="12"/>
+                <line x1="8" x2="21" y1="18" y2="18"/>
+                <line x1="3" x2="3.01" y1="6" y2="6"/>
+                <line x1="3" x2="3.01" y1="12" y2="12"/>
+                <line x1="3" x2="3.01" y1="18" y2="18"/>
+            </svg>
+        );
+
         function LotteryWheel() {
             const [names, setNames] = useState(['Alice', 'Bob', 'Charlie', 'Diana', 'Emma', 'Frank', 'Grace', 'Henry']);
             const [newName, setNewName] = useState('');
+            const [bulkNames, setBulkNames] = useState('');
             const [isSpinning, setIsSpinning] = useState(false);
             const [winner, setWinner] = useState(null);
             const [rotation, setRotation] = useState(0);
             const [showConfetti, setShowConfetti] = useState(false);
             const [confettiPieces, setConfettiPieces] = useState([]);
             const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+            const [editingIndex, setEditingIndex] = useState(null);
+            const [editValue, setEditValue] = useState('');
             const wheelRef = useRef(null);
 
             useEffect(() => {
@@ -185,6 +219,24 @@
                 }
             };
 
+            const addBulkNames = () => {
+                if (!bulkNames.trim()) return;
+                
+                // Split by comma, newline, or semicolon
+                const newNamesList = bulkNames
+                    .split(/[,;\n]+/)
+                    .map(name => name.trim())
+                    .filter(name => name && !names.includes(name));
+                
+                const availableSlots = 12 - names.length;
+                const namesToAdd = newNamesList.slice(0, availableSlots);
+                
+                if (namesToAdd.length > 0) {
+                    setNames([...names, ...namesToAdd]);
+                    setBulkNames('');
+                }
+            };
+
             const removeName = (nameToRemove) => {
                 if (names.length > 2) {
                     setNames(names.filter(n => n !== nameToRemove));
@@ -192,6 +244,26 @@
                         setWinner(null);
                     }
                 }
+            };
+
+            const startEdit = (index, name) => {
+                setEditingIndex(index);
+                setEditValue(name);
+            };
+
+            const saveEdit = () => {
+                if (editValue.trim() && !names.includes(editValue.trim())) {
+                    const newNames = [...names];
+                    newNames[editingIndex] = editValue.trim();
+                    setNames(newNames);
+                }
+                setEditingIndex(null);
+                setEditValue('');
+            };
+
+            const cancelEdit = () => {
+                setEditingIndex(null);
+                setEditValue('');
             };
 
             const spinWheel = () => {
@@ -210,9 +282,12 @@
                 setTimeout(() => {
                     const normalizedRotation = totalRotation % 360;
                     const segmentAngle = 360 / names.length;
-                    const pointerAngle = 90;
-                    const adjustedAngle = (normalizedRotation + pointerAngle) % 360;
-                    const winnerIndex = Math.floor(adjustedAngle / segmentAngle) % names.length;
+                    
+                    // The pointer is at the top (0 degrees)
+                    // We need to find which segment is at the top after rotation
+                    // Adjust for the fact that segments start from -90 degrees (top)
+                    const adjustedRotation = (360 - normalizedRotation) % 360;
+                    const winnerIndex = Math.floor(adjustedRotation / segmentAngle) % names.length;
                     
                     setWinner(names[winnerIndex]);
                     setIsSpinning(false);
@@ -398,47 +473,116 @@
                             <div className="bg-white/10 backdrop-blur-lg rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl">
                                 <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Participants</h2>
                                 
-                                <div className="flex gap-2 mb-4 sm:mb-6">
+                                {/* Add Single Name */}
+                                <div className="flex gap-2 mb-4">
                                     <input
                                         type="text"
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && addName()}
-                                        placeholder="Enter a name..."
+                                        placeholder="Add single name..."
                                         className="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl bg-white/20 text-white placeholder-blue-200 border-2 border-white/30 focus:border-yellow-400 focus:outline-none transition-all text-sm sm:text-base"
                                     />
                                     <button
                                         onClick={addName}
                                         disabled={names.length >= 12}
                                         className="bg-yellow-400 text-gray-900 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl hover:bg-yellow-300 active:scale-95 transition-all flex items-center gap-1 sm:gap-2 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-yellow-400"
-                                        title={names.length >= 12 ? "Maximum 12 participants reached" : "Add participant"}
                                     >
                                         <Plus size={isMobile ? 18 : 20} />
                                         Add
                                     </button>
                                 </div>
 
-                                <div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                                {/* Bulk Add Names */}
+                                <div className="mb-6 p-4 bg-white/5 rounded-xl border-2 border-white/20">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <List size={18} className="text-yellow-400" />
+                                        <label className="text-white font-semibold text-sm">Add Multiple Names</label>
+                                    </div>
+                                    <p className="text-blue-200 text-xs mb-3">Separate names with commas, semicolons, or new lines (e.g., Alice, Bob, Charlie)</p>
+                                    <textarea
+                                        value={bulkNames}
+                                        onChange={(e) => setBulkNames(e.target.value)}
+                                        placeholder="Alice, Bob, Charlie&#10;or&#10;Alice&#10;Bob&#10;Charlie"
+                                        className="w-full px-3 py-2 rounded-lg bg-white/20 text-white placeholder-blue-200 border-2 border-white/30 focus:border-yellow-400 focus:outline-none transition-all text-sm resize-none"
+                                        rows="3"
+                                    />
+                                    <button
+                                        onClick={addBulkNames}
+                                        disabled={names.length >= 12 || !bulkNames.trim()}
+                                        className="mt-2 w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 active:scale-95 transition-all flex items-center justify-center gap-2 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Plus size={18} />
+                                        Add All Names
+                                    </button>
+                                </div>
+
+                                {/* Names List */}
+                                <div className="space-y-2 max-h-64 sm:max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                                     {names.map((name, i) => (
                                         <div
                                             key={i}
-                                            className="bg-white/20 backdrop-blur rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center justify-between group hover:bg-white/30 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                            className="bg-white/20 backdrop-blur rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center justify-between group hover:bg-white/30 transition-all"
                                         >
-                                            <div className="flex items-center gap-2 sm:gap-3">
-                                                <div
-                                                    className="w-3 h-3 sm:w-4 sm:h-4 rounded-full shadow-lg"
-                                                    style={{ backgroundColor: colors[i % colors.length] }}
-                                                />
-                                                <span className="text-white font-medium text-base sm:text-lg">{name}</span>
-                                            </div>
-                                            <button
-                                                onClick={() => removeName(name)}
-                                                className="text-red-300 hover:text-red-400 opacity-70 sm:opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-90"
-                                                disabled={names.length <= 2}
-                                                title={names.length <= 2 ? "Need at least 2 participants" : "Remove"}
-                                            >
-                                                <Trash2 size={isMobile ? 16 : 18} />
-                                            </button>
+                                            {editingIndex === i ? (
+                                                <>
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <div
+                                                            className="w-3 h-3 sm:w-4 sm:h-4 rounded-full shadow-lg flex-shrink-0"
+                                                            style={{ backgroundColor: colors[i % colors.length] }}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={editValue}
+                                                            onChange={(e) => setEditValue(e.target.value)}
+                                                            onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                                                            className="flex-1 px-2 py-1 rounded bg-white/30 text-white border-2 border-yellow-400 focus:outline-none text-sm sm:text-base"
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-1 ml-2">
+                                                        <button
+                                                            onClick={saveEdit}
+                                                            className="text-green-400 hover:text-green-300 p-1 hover:scale-110 transition-all"
+                                                        >
+                                                            <Check size={isMobile ? 16 : 18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelEdit}
+                                                            className="text-red-400 hover:text-red-300 p-1 hover:scale-110 transition-all"
+                                                        >
+                                                            <X size={isMobile ? 16 : 18} />
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center gap-2 sm:gap-3">
+                                                        <div
+                                                            className="w-3 h-3 sm:w-4 sm:h-4 rounded-full shadow-lg"
+                                                            style={{ backgroundColor: colors[i % colors.length] }}
+                                                        />
+                                                        <span className="text-white font-medium text-base sm:text-lg">{name}</span>
+                                                    </div>
+                                                    <div className="flex gap-1 opacity-70 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => startEdit(i, name)}
+                                                            className="text-blue-300 hover:text-blue-400 p-1 hover:scale-110 transition-all"
+                                                            title="Edit name"
+                                                        >
+                                                            <Edit2 size={isMobile ? 14 : 16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => removeName(name)}
+                                                            className="text-red-300 hover:text-red-400 p-1 hover:scale-110 transition-all"
+                                                            disabled={names.length <= 2}
+                                                            title={names.length <= 2 ? "Need at least 2 participants" : "Remove"}
+                                                        >
+                                                            <Trash2 size={isMobile ? 14 : 16} />
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
